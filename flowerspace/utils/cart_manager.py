@@ -102,6 +102,7 @@ class Cart:
                         "image": item["product"].image.url if item["product"].image else "",
                         "price": item["price"],
                     },
+                    "instance": item["product"],
                     "quantity": item["quantity"],
                 }
                 for item in self.items()

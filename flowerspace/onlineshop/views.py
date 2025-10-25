@@ -91,27 +91,25 @@ class ProductDetailsView(DetailView):
     # Cart management via javascript (i wanna kms)
     def post(self, request, *args, **kwargs):
         product = self.get_object()
-        cart = self.cart_manager.load_cart()
-        cart_data = cart.get_data()
-
 
         if request.POST.get('add'):
-            cart.add(product=product, quantity=1)
-            cart_count = next((item['quantity'] for item in cart_data['items'] if item['product']['id'] == product.id), 0)
-            return JsonResponse({
-                "message": "Product added successfully.",
-                "cart_count": cart_count
-            })
+            self.cart.add(product=product, quantity=1)
 
         elif request.POST.get('remove'):
-            cart.delete(product.id)
-            cart_count = next((item['quantity'] for item in cart_data['items'] if item['product']['id'] == product.id), 0)
-            return JsonResponse({
-                "message": "Product removed from cart.",
-                "cart_count": cart_count
-            })
+            self.cart.delete(product.id)
 
-        return JsonResponse({"error": "Invalid action"}, status=400)
+        else:
+            return JsonResponse({"error": "Invalid action"}, status=400)
+
+        cart_data = self.cart.get_data()
+        cart_count = next((item['quantity'] for item in cart_data['items'] if item['product']['id'] == product.id), 0)
+
+        return JsonResponse({
+            "message": "Product removed from cart.",
+            "cart_count": cart_count
+        })
+
+
 
 
 
