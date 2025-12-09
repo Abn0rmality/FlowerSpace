@@ -5,6 +5,8 @@ from datetime import datetime
 from django.conf import settings
 
 
+redis_url = settings.REDIS_URL
+
 class RedisClient:
     """Singleton Redis connection."""
     _connection = None
@@ -12,7 +14,12 @@ class RedisClient:
     @classmethod
     def get_connection(cls):
         if cls._connection is None:
-            cls._connection = redis.Redis.from_url(settings.REDIS_URL)
+            if redis_url is None:
+                raise ValueError(
+                    "REDIS_URL is not set. Please set REDIS_URL in your environment variables "
+                    "or Django settings (e.g., 'redis://localhost:6379/0')"
+                )
+            cls._connection = redis.Redis.from_url(redis_url)
         return cls._connection
 
 

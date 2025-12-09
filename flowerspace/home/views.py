@@ -22,16 +22,21 @@ class HomepageView(ListView):
     template_name = "home/homepage.html"
     context_object_name = "posts"
 
+    def get_queryset(self):
+        """Get posts using PostsCacheManager, ensuring we always return a queryset."""
+        queryset = PostsCacheManager.get_posts(
+            user=self.request.user,
+            search_keyword=self.request.GET.get("search")
+        )
+        # Ensure we have a queryset (not None)
+        if queryset is None:
+            queryset = Posts.objects.none()
+        return queryset
+
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(**kwargs)
         context["daily_quote"] = get_daily_quote()
         return context
-
-    def get_queryset(self):
-        return PostsCacheManager.get_posts(
-            user=self.request.user,
-            search_keyword=self.request.GET.get("search")
-        )
 
 
 

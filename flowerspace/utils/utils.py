@@ -101,11 +101,26 @@ class PostsCacheManager:
         """
         Return cached posts with optional user-specific adjustments.
         Falls back to DB and repopulates cache if empty.
+        Always returns a queryset.
         """
-        posts = cache.get(cls.CACHE_KEY_ALL)
+        # Search-specific filtering takes priority
+        if search_keyword:
+            queryset = Posts.objects.filter(
+                Q(hashtags__name__icontains=search_keyword) |
+                Q(desc__icontains=search_keyword)
+            ).distinct().select_related('user').prefetch_related('hashtags')
+            
+            # Apply blocked relations filtering if user is authenticated
+            if user and user.is_authenticated:
+                queryset = exclude_blocked_relations(user, queryset)
+                if queryset is None:
+                    queryset = Posts.objects.none()
+            
+            return queryset
 
+        # Check cache and update if needed
+        posts = cache.get(cls.CACHE_KEY_ALL)
         if posts is None:
-            # Pull all posts randomly and cache them
             cls.update_posts()
 
         # User-specific filtering
@@ -116,21 +131,35 @@ class PostsCacheManager:
 
             newest_following_posts = Posts.objects.filter(
                 user__id__in=followed_users
-            ).order_by("-created")[:3]
+            ).select_related('user').prefetch_related('hashtags').order_by("-created")[:3]
 
-            newest_ids = [post.id for post in newest_following_posts]
-            randomized_posts = Posts.objects.exclude(id__in=newest_ids).order_by("?")
+            newest_ids = list(newest_following_posts.values_list('id', flat=True))
+            randomized_posts = Posts.objects.exclude(id__in=newest_ids).select_related('user').prefetch_related('hashtags').order_by("?")
+            
+            # Apply blocked relations filtering
             randomized_posts = exclude_blocked_relations(user, randomized_posts)
-            posts = list(newest_following_posts) + list(randomized_posts)
+            if randomized_posts is None:
+                randomized_posts = Posts.objects.none()
+            
+            # Get IDs from both querysets
+            following_ids = list(newest_following_posts.values_list('id', flat=True))
+            random_ids = list(randomized_posts.values_list('id', flat=True))
+            all_ids = following_ids + random_ids
+            
+            if all_ids:
+                # Combine querysets by IDs, maintaining order (following posts first)
+                queryset = Posts.objects.filter(id__in=all_ids).select_related('user').prefetch_related('hashtags')
+                # Preserve order: following posts first, then randomized
+                from django.db.models import Case, When, IntegerField
+                preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(all_ids)])
+                queryset = queryset.annotate(order=preserved).order_by('order')
+            else:
+                queryset = Posts.objects.none()
+            
+            return queryset
 
-        # Search-specific filtering
-        if search_keyword:
-            posts = Posts.objects.filter(
-                Q(hashtags__name__icontains=search_keyword) |
-                Q(desc__icontains=search_keyword)
-            ).distinct()
-
-        return posts
+        # For non-authenticated users, return all posts (use cache if available)
+        return Posts.objects.all().select_related('user').prefetch_related('hashtags').order_by("?")
 
     @classmethod
     def invalidate_cache(cls):

@@ -36,7 +36,11 @@ INSTALLED_APPS = [
 
     # third party apps
     'django_ckeditor_5',
-    'storages'
+    'storages',
+    'rest_framework',
+    
+    # api app
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -89,7 +93,7 @@ DATABASES = {
     }
 }
 
-REDIS_URL = os.getenv("REDIS_URL")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 CACHES = {
     "default": {
@@ -199,3 +203,15 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "projectspacedevs@gmail.com"
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Django REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Open API for Telegram bot
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+}
