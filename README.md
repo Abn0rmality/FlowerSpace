@@ -3,6 +3,7 @@
 **A Social Media Platform for Plant Lovers**
 
 [See demo here](https://flower-space-xi.vercel.app/)
+currently unavailable due to vercel limitations
 
 ## Table of Contents
 - [Update Log](#update-log)
